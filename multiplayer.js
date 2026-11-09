@@ -2,7 +2,7 @@
 /* SQUARE STACK - MULTIPLAYER */
 
 
-const MP_SERVER_URL = "";
+const MP_SERVER_URL = "https://square-stack-multiplayer.onrender.com";
 
 const mpServerOrigin =
     MP_SERVER_URL.trim().replace(/\/$/, "") ||

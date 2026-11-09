@@ -81,6 +81,27 @@ function limited(ip) {
 }
 
 const server = http.createServer(async (req, res) => {
+    
+res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://squerstack.netlify.app"
+);
+
+res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS"
+);
+
+res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+);
+
+if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+}
+
     const url = new URL(
         req.url,
         "http://localhost"
