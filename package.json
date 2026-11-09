@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "ws": "^8.22.2"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-packager": "^17.1.2"
+  }
+}

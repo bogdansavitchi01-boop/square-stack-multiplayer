@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0,
+                   maximum-scale=1.0, user-scalable=no">
+
+    <title>⛏️ SQUARE STACK</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- MENIUL PRINCIPAL -->
+    <div id="main-menu" class="menu">
+
+        <h1>⛏️ SQUARE STACK</h1>
+        <h3>ALPHA EDITION</h3>
+
+        <button onclick="openWorldMenu()">
+            ▶ PLAY
+        </button>
+
+        <button onclick="showMenu('multiplayer-menu')">
+            🌍 MULTIPLAYER
+        </button>
+
+        <button onclick="showMenu('settings-menu')">
+            ⚙️ SETĂRI
+        </button>
+
+        <button onclick="showMenu('account-menu')">
+            👤 CONT
+        </button>
+
+    </div>
+
+
+    <!-- MENIUL LUMILOR -->
+    <div id="world-menu" class="menu hidden">
+
+        <h2>🌍 Lumile mele</h2>
+
+        <div id="world-list"></div>
+
+        <button onclick="showMenu('create-world')">
+            ➕ Creează lume nouă
+        </button>
+
+        <button onclick="showMenu('main-menu')">
+            ⬅ Înapoi
+        </button>
+
+    </div>
+
+
+    <!-- CREAREA LUMII -->
+    <div id="create-world" class="menu hidden">
+
+        <h2>🌱 Creează o lume</h2>
+
+        <input
+            type="text"
+            id="world-name"
+            placeholder="Numele lumii"
+            value="Lumea mea"
+        >
+
+        <label for="world-type">Tipul lumii</label>
+
+        <select id="world-type">
+            <option value="normal">🌳 Normală</option>
+            <option value="flat">🟩 Plată</option>
+            <option value="mountains">🏔️ Munți</option>
+        </select>
+
+        <label for="game-mode">Modul de joc</label>
+
+        <select id="game-mode">
+            <option value="creative">Creative</option>
+            <option value="survival">Survival fără vieți</option>
+        </select>
+
+        <button onclick="createWorld()">
+            🎮 Creează și joacă
+        </button>
+
+        <button onclick="showMenu('world-menu')">
+            ⬅ Înapoi
+        </button>
+
+    </div>
+
+
+    <!-- SETĂRI -->
+    <div id="settings-menu" class="menu hidden">
+
+        <h2>⚙️ Setări</h2>
+
+        <label for="control-mode">Mod de control</label>
+
+        <select id="control-mode">
+            <option value="mobile">📱 Telefon / Tabletă</option>
+            <option value="vr">🥽 VR</option>
+        </select>
+
+        <label for="graphics">Grafică</label>
+
+        <select id="graphics">
+            <option value="low">Simplă</option>
+            <option value="medium" selected>Normală</option>
+            <option value="high">Frumoasă</option>
+        </select>
+
+        <label for="perspective">Perspectivă</label>
+
+        <select id="perspective">
+            <option value="first">Persoana întâi</option>
+            <option value="third">Persoana a treia</option>
+        </select>
+
+        <button onclick="saveSettings()">
+            💾 Salvează setările
+        </button>
+
+        <button onclick="showMenu('main-menu')">
+            ⬅ Înapoi
+        </button>
+
+    </div>
+
+
+    <!-- CONT LOCAL -->
+    <div id="account-menu" class="menu hidden">
+
+        <h2>👤 Contul meu</h2>
+
+        <input
+            type="text"
+            id="username"
+            placeholder="Numele jucătorului"
+        >
+
+        <button onclick="saveAccount()">
+            💾 Salvează profilul local
+        </button>
+
+        <button onclick="showMenu('multiplayer-menu')">
+            🌍 Cont multiplayer
+        </button>
+
+        <p>
+            Pentru a juca online, creează
+            un cont în meniul Multiplayer.
+        </p>
+
+        <button onclick="showMenu('main-menu')">
+            ⬅ Înapoi
+        </button>
+
+    </div>
+
+
+    <!-- MENIUL MULTIPLAYER -->
+    <div id="multiplayer-menu" class="menu hidden">
+
+        <h2>🌍 Square Stack Multiplayer</h2>
+
+        <h3>👤 Cont Square Stack</h3>
+
+        <input
+            id="mp-name"
+            type="text"
+            placeholder="Numele jucătorului"
+            maxlength="20"
+            autocomplete="username"
+        >
+
+        <input
+            id="mp-password"
+            type="password"
+            placeholder="Parola contului"
+            autocomplete="current-password"
+        >
+
+        <button id="mp-register">
+            ➕ Creează cont
+        </button>
+
+        <button id="mp-login">
+            🔑 Conectare
+        </button>
+        
+<h3>👕 Skinul meu</h3>
+
+<input type="file" id="skin-file"
+       accept="image/png">
+
+<br><br>
+
+<img id="skin-preview"
+     width="128"
+     height="128"
+     style="image-rendering: pixelated;">
+
+<br>
+
+<button onclick="saveSkin()">
+    💾 Salvează skinul
+</button>
+
+
+        <h3>🎮 Joacă împreună</h3>
+
+        <p>
+            Introdu același cod de lume
+            ca prietenii tăi.
+        </p>
+
+        <input
+            id="mp-room"
+            type="text"
+            placeholder="Codul lumii"
+            value="CASA123"
+            maxlength="10"
+        >
+
+        <button id="mp-join">
+            🌍 Intră / Creează lume
+        </button>
+
+        <p id="mp-status">
+            Nu ești conectat.
+        </p>
+
+        <button onclick="showMenu('main-menu')">
+            ⬅ Înapoi
+        </button>
+
+    </div>
+
+
+    <!-- JOCUL 3D -->
+    <div id="game-screen" class="hidden">
+
+        <div id="game-container"></div>
+
+        <!-- BUTOANELE DE SUS -->
+        <div id="top-controls">
+
+            <button onclick="pauseGame()">
+                ☰
+            </button>
+
+            <button onclick="changePerspective()">
+                👁️
+            </button>
+
+            <button onclick="saveGame()">
+                💾
+            </button>
+
+        </div>
+
+
+        <!-- ȚINTA -->
+        <div id="crosshair">+</div>
+
+
+        <!-- INVENTAR -->
+        <div id="inventory"></div>
+
+
+        <!-- BUTOANE DE MIȘCARE -->
+        <div id="movement-controls">
+
+            <button id="move-forward">▲</button>
+
+            <div>
+                <button id="move-left">◀</button>
+                <button id="move-back">▼</button>
+                <button id="move-right">▶</button>
+            </div>
+
+        </div>
+
+
+        <!-- ACȚIUNI -->
+        <div id="action-controls">
+
+            <button id="jump-button">
+                ⬆ SARI
+            </button>
+
+            <button id="mine-button">
+                ⛏️ MINEAZĂ
+            </button>
+
+            <button id="place-button">
+                🧱 CONSTRUIEȘTE
+            </button>
+
+        </div>
+
+    </div>
+    <!-- SFÂRȘITUL JOCULUI 3D -->
+
+
+    <!-- BIBLIOTECA THREE.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+
+    <!-- FIȘIERELE JOCULUI -->
+    <script src="textures.js"></script>
+    <script src="world.js"></script>
+    <script src="inventory.js"></script>
+
+
+    <!-- MOTORUL 3D -->
+    <script src="main.js"></script>
+
+
+    <!-- ANIMALE ȘI INAMICI -->
+    <script src="enemies.js"></script>
+    <script src="animals.js"></script>
+
+
+    <!-- MULTIPLAYER -->
+    <script src="multiplayer.js"></script>
+   <script src="pc-controls.js"></script>
+
+    <!-- MENIURI ȘI ERORI -->
+    <script>
+        function openWorldMenu() {
+            showMenu("world-menu");
+        }
+
+        window.addEventListener("error", function(event) {
+            console.error("Square Stack:", event.message);
+        });
+    </script>
+
+</body>
+</html>
