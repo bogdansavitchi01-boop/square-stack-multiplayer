@@ -6,6 +6,34 @@ const crypto = require("node:crypto");
 const { promisify } = require("node:util");
 const { WebSocketServer } = require("ws");
 
+const { Pool } = require("pg");
+
+const database = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    },
+    max: 5,
+    connectionTimeoutMillis: 10000
+});
+
+database.on("error", error => {
+    console.error("Eroare PostgreSQL:", error.message);
+});
+
+async function testDatabase() {
+    try {
+        const result = await database.query("SELECT NOW()");
+        console.log("Square Stack: Supabase conectat!");
+    } catch (error) {
+        console.error(
+            "Conexiunea Supabase a eșuat:",
+            error.message
+        );
+    }
+}
+
+
 const PORT = process.env.PORT || 3000;
 const scrypt = promisify(crypto.scrypt);
 
@@ -492,3 +520,6 @@ server.listen(PORT, "0.0.0.0", () => {
         "Square Stack multiplayer: http://localhost:" + PORT
     );
 });
+if (process.env.DATABASE_URL) {
+    testDatabase();
+}
