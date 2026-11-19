@@ -1,42 +1,110 @@
 
+/* ==========================================
+   SQUARE STACK - SERVER MULTIPLAYER
+   CONTURI + LUMI + SKINURI 3D
+   ========================================== */
+
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { promisify } = require("node:util");
-const { WebSocketServer, WebSocket } = require("ws");
+const { WebSocketServer } = require("ws");
 const { Pool } = require("pg");
 
 const PORT = process.env.PORT || 3000;
 const scrypt = promisify(crypto.scrypt);
 
-// BAZA DE DATE SUPABASE
-if (!process.env.DATABASE_URL) {
-    console.error("Lipsește DATABASE_URL!");
-    process.exit(1);
+/* ==========================================
+   SUPABASE / POSTGRESQL
+   ========================================== */
+
+const database = process.env.DATABASE_URL
+    ? new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false
+        },
+        max: 5,
+        connectionTimeoutMillis: 10000
+    })
+    : null;
+
+if (database) {
+    database.on("error", error => {
+        console.error(
+            "Eroare PostgreSQL:",
+            error.message
+        );
+    });
 }
 
-const database = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-    max: 5,
-    connectionTimeoutMillis: 10000
+async function testDatabase() {
+    if (!database) return;
+
+    try {
+        await database.query("SELECT NOW()");
+
+        console.log(
+            "Square Stack: Supabase conectat!"
+        );
+    } catch (error) {
+        console.error(
+            "Conexiunea Supabase a esuat:",
+            error.message
+        );
+    }
+}
+
+/* ==========================================
+   SALVAREA DATELOR
+   ========================================== */
+
+const dataFolder = path.join(
+    __dirname,
+    "server-data"
+);
+
+fs.mkdirSync(dataFolder, {
+    recursive: true
 });
 
-database.on("error", error => {
-    console.error("Eroare PostgreSQL:", error.message);
-});
+function readJSON(name, fallback) {
+    try {
+        const file = path.join(dataFolder, name);
+
+        return JSON.parse(
+            fs.readFileSync(file, "utf8")
+        );
+    } catch {
+        return fallback;
+    }
+}
+
+function saveJSON(name, data) {
+    fs.writeFileSync(
+        path.join(dataFolder, name),
+        JSON.stringify(data, null, 2)
+    );
+}
+
+const accounts = readJSON("accounts.json", {});
+const rooms = readJSON("rooms.json", {});
 
 const sessions = new Map();
 const players = new Map();
 const attempts = new Map();
 
-// RĂSPUNS JSON
+/* ==========================================
+   FUNCTII HTTP
+   ========================================== */
+
 function reply(res, status, data) {
     res.writeHead(status, {
         "Content-Type": "application/json",
         "Cache-Control": "no-store"
     });
+
     res.end(JSON.stringify(data));
 }
 
@@ -45,6 +113,7 @@ async function bodyJSON(req) {
 
     for await (const chunk of req) {
         body += chunk;
+
         if (body.length > 4096) {
             throw new Error("Cerere prea mare.");
         }
@@ -54,241 +123,308 @@ async function bodyJSON(req) {
 }
 
 async function makeHash(password, salt) {
-    const buffer = await scrypt(password, salt, 64);
+    const buffer = await scrypt(
+        password,
+        salt,
+        64
+    );
+
     return buffer.toString("hex");
 }
 
 function limited(ip) {
     const now = Date.now();
+
     const previous = attempts.get(ip) || [];
+
     const recent = previous.filter(
         time => now - time < 600000
     );
 
     recent.push(now);
     attempts.set(ip, recent);
+
     return recent.length > 15;
 }
 
-// SERVER HTTP
-const server = http.createServer(async (req, res) => {
-    res.setHeader(
-        "Access-Control-Allow-Origin",
-        "https://squerstack.netlify.app"
-    );
-    res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS"
-    );
-    res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type"
-    );
+/* ==========================================
+   SERVER HTTP
+   ========================================== */
 
-    if (req.method === "OPTIONS") {
-        res.writeHead(204);
-        return res.end();
-    }
+const server = http.createServer(
+    async (req, res) => {
 
-    const url = new URL(req.url, "http://localhost");
+        const allowedOrigins = [
+            "https://squerstack.netlify.app",
+            "http://127.0.0.1:5500",
+            "http://localhost:5500"
+        ];
 
-    // DESCĂRCARE JOC
-    const downloads = {
-        "/download/windows": {
-            file: "SquareStack-Setup.exe",
-            type: "application/octet-stream"
-        },
-        "/download/android": {
-            file: "SquareStack-Android.apk",
-            type: "application/vnd.android.package-archive"
+        const origin = req.headers.origin;
+
+        if (allowedOrigins.includes(origin)) {
+            res.setHeader("Access-Control-Allow-Origin", origin);
         }
-    };
 
-    const download = downloads[url.pathname];
+        res.setHeader("Vary", "Origin");
 
-    if (download) {
-        const filePath = path.join(
-            __dirname, "downloads", download.file
+        res.setHeader(
+            "Access-Control-Allow-Methods",
+            "GET, POST, OPTIONS"
         );
 
-        fs.stat(filePath, (error, stats) => {
-            if (error || !stats.isFile()) {
-                res.writeHead(404);
-                return res.end("Versiune indisponibilă.");
+        res.setHeader(
+            "Access-Control-Allow-Headers",
+            "Content-Type"
+        );
+
+        if (req.method === "OPTIONS") {
+            res.writeHead(204);
+            res.end();
+            return;
+        }
+
+        const url = new URL(
+            req.url,
+            "http://localhost"
+        );
+
+        /* ==============================
+           DESCARCARE APK / EXE
+           ============================== */
+
+        const downloads = {
+            "/download/windows": {
+                file: "SquareStack-Setup.exe",
+                type: "application/octet-stream"
+            },
+
+            "/download/android": {
+                file: "SquareStack-Android.apk",
+                type: "application/vnd.android.package-archive"
             }
+        };
 
-            res.writeHead(200, {
-                "Content-Type": download.type,
-                "Content-Length": stats.size,
-                "Content-Disposition":
-                    `attachment; filename="${download.file}"`
-            });
+        const download = downloads[url.pathname];
 
-            fs.createReadStream(filePath).pipe(res);
-        });
+        if (download) {
+            const filePath = path.join(
+                __dirname,
+                "downloads",
+                download.file
+            );
 
-        return;
-    }
-
-    // CONTURI SUPABASE
-    if (
-        url.pathname === "/api/account" &&
-        req.method === "POST"
-    ) {
-        if (limited(req.socket.remoteAddress)) {
-            return reply(res, 429, {
-                error: "Prea multe încercări."
-            });
-        }
-
-        let data;
-
-        try {
-            data = await bodyJSON(req);
-        } catch {
-            return reply(res, 400, {
-                error: "Cerere invalidă."
-            });
-        }
-
-        const name = String(data.name || "").trim();
-        const password = String(data.password || "");
-        const key = name.toLowerCase();
-
-        if (!/^[a-zA-Z0-9_]{3,20}$/.test(name)) {
-            return reply(res, 400, {
-                error: "Numele trebuie să aibă 3-20 caractere."
-            });
-        }
-
-        if (password.length < 10 ||
-            password.length > 128) {
-            return reply(res, 400, {
-                error: "Parola trebuie să aibă 10-128 caractere."
-            });
-        }
-
-        try {
-            let account;
-
-            if (data.action === "register") {
-                const salt = crypto.randomBytes(16)
-                    .toString("hex");
-
-                const hash = await makeHash(password, salt);
-
-                const result = await database.query(
-                    `INSERT INTO public.accounts
-                     (username, name, salt, hash)
-                     VALUES ($1, $2, $3, $4)
-                     ON CONFLICT (username) DO NOTHING
-                     RETURNING name`,
-                    [key, name, salt, hash]
-                );
-
-                if (!result.rowCount) {
-                    return reply(res, 409, {
-                        error: "Acest nume este deja folosit."
+            fs.stat(filePath, (error, stats) => {
+                if (error || !stats.isFile()) {
+                    res.writeHead(404, {
+                        "Content-Type":
+                            "text/plain; charset=utf-8"
                     });
+
+                    res.end(
+                        "Aceasta versiune nu este inca disponibila."
+                    );
+
+                    return;
                 }
 
-                account = result.rows[0];
+                res.writeHead(200, {
+                    "Content-Type": download.type,
+                    "Content-Length": stats.size,
+                    "Content-Disposition":
+                        `attachment; filename="${download.file}"`
+                });
 
-            } else if (data.action === "login") {
-                const result = await database.query(
-                    `SELECT name, salt, hash
-                     FROM public.accounts
-                     WHERE username = $1`,
-                    [key]
-                );
+                fs.createReadStream(filePath).pipe(res);
+            });
 
-                account = result.rows[0];
+            return;
+        }
 
-                if (!account) {
-                    return reply(res, 401, {
-                        error: "Nume sau parolă greșită."
-                    });
-                }
+        /* ==============================
+           CONTURI SQUARE STACK
+           ============================== */
 
-                const calculated = Buffer.from(
-                    await makeHash(password, account.salt),
-                    "hex"
-                );
-
-                const stored = Buffer.from(
-                    account.hash, "hex"
-                );
-
-                if (
-                    calculated.length !== stored.length ||
-                    !crypto.timingSafeEqual(calculated, stored)
-                ) {
-                    return reply(res, 401, {
-                        error: "Nume sau parolă greșită."
-                    });
-                }
-
-            } else {
-                return reply(res, 400, {
-                    error: "Acțiune necunoscută."
+        if (
+            url.pathname === "/api/account" &&
+            req.method === "POST"
+        ) {
+            if (limited(req.socket.remoteAddress)) {
+                return reply(res, 429, {
+                    error:
+                        "Prea multe incercari. Incearca mai tarziu."
                 });
             }
 
-            const token = crypto.randomBytes(32)
-                .toString("hex");
+            try {
+                const data = await bodyJSON(req);
 
-            sessions.set(token, {
-                name: account.name,
-                expires: Date.now() + 86400000
-            });
+                const name = String(
+                    data.name || ""
+                ).trim();
 
-            return reply(res, 200, {
-                token,
-                name: account.name
-            });
+                const password = String(
+                    data.password || ""
+                );
 
-        } catch (error) {
-            console.error("Eroare cont:", error.message);
+                const key = name.toLowerCase();
 
-            return reply(res, 503, {
-                error: "Baza de date este indisponibilă."
-            });
+                if (
+                    !/^[a-zA-Z0-9_]{3,20}$/.test(name)
+                ) {
+                    return reply(res, 400, {
+                        error:
+                            "Numele trebuie sa aiba 3-20 caractere."
+                    });
+                }
+
+                if (
+                    password.length < 10 ||
+                    password.length > 128
+                ) {
+                    return reply(res, 400, {
+                        error:
+                            "Parola trebuie sa aiba minimum 10 caractere."
+                    });
+                }
+
+                if (data.action === "register") {
+
+                    if (accounts[key]) {
+                        return reply(res, 409, {
+                            error:
+                                "Acest nume este deja folosit."
+                        });
+                    }
+
+                    const salt = crypto
+                        .randomBytes(16)
+                        .toString("hex");
+
+                    accounts[key] = {
+                        name,
+                        salt,
+                        hash: await makeHash(
+                            password,
+                            salt
+                        )
+                    };
+
+                    saveJSON(
+                        "accounts.json",
+                        accounts
+                    );
+
+                } else if (data.action === "login") {
+
+                    const account = accounts[key];
+
+                    if (!account) {
+                        return reply(res, 401, {
+                            error:
+                                "Nume sau parola gresita."
+                        });
+                    }
+
+                    const calculated = await makeHash(
+                        password,
+                        account.salt
+                    );
+
+                    const valid = crypto.timingSafeEqual(
+                        Buffer.from(
+                            calculated,
+                            "hex"
+                        ),
+                        Buffer.from(
+                            account.hash,
+                            "hex"
+                        )
+                    );
+
+                    if (!valid) {
+                        return reply(res, 401, {
+                            error:
+                                "Nume sau parola gresita."
+                        });
+                    }
+
+                } else {
+                    return reply(res, 400, {
+                        error:
+                            "Actiune necunoscuta."
+                    });
+                }
+
+                const token = crypto
+                    .randomBytes(32)
+                    .toString("hex");
+
+                sessions.set(token, {
+                    name: accounts[key].name,
+                    expires:
+                        Date.now() + 86400000
+                });
+
+                return reply(res, 200, {
+                    token,
+                    name: accounts[key].name
+                });
+
+            } catch (error) {
+                console.error(error);
+
+                return reply(res, 400, {
+                    error: "Cerere invalida."
+                });
+            }
         }
-    }
 
-    // FIȘIERELE JOCULUI
-    let filename = url.pathname.substring(1);
-    if (!filename) filename = "site.html";
+        /* ==============================
+           FISIERELE JOCULUI
+           ============================== */
 
-    const allowed =
-        /^[a-zA-Z0-9_.-]+\.(html|js|css|png|jpg|jpeg|webp)$/;
+        let filename =
+            url.pathname.substring(1);
 
-    if (
-        !allowed.test(filename) ||
-        filename === "server.js" ||
-        filename === "package.json" ||
-        filename.startsWith(".")
-    ) {
-        res.writeHead(404);
-        return res.end("Nu există.");
-    }
+        if (!filename) {
+            filename = "site.html";
+        }
 
-    const extensions = {
-        ".html": "text/html; charset=utf-8",
-        ".js": "text/javascript; charset=utf-8",
-        ".css": "text/css; charset=utf-8",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp"
-    };
+        const allowed =
+            /^[a-zA-Z0-9_.-]+\.(html|js|css|png|jpg|jpeg|webp)$/;
 
-    fs.readFile(
-        path.join(__dirname, filename),
-        (error, content) => {
+        if (
+            !allowed.test(filename) ||
+            filename === "server.js" ||
+            filename === "package.json" ||
+            filename.startsWith(".")
+        ) {
+            res.writeHead(404);
+            res.end("Nu exista.");
+            return;
+        }
+
+        const filePath = path.join(
+            __dirname,
+            filename
+        );
+
+        const extensions = {
+            ".html": "text/html; charset=utf-8",
+            ".js": "text/javascript; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp"
+        };
+
+        fs.readFile(filePath, (error, content) => {
             if (error) {
                 res.writeHead(404);
-                return res.end("Fișier negăsit.");
+                res.end("Fisier negasit.");
+                return;
             }
 
             res.writeHead(200, {
@@ -298,263 +434,452 @@ const server = http.createServer(async (req, res) => {
             });
 
             res.end(content);
-        }
-    );
-});
+        });
+    }
+);
 
-// MULTIPLAYER
+/* ==========================================
+   WEBSOCKET MULTIPLAYER
+   ========================================== */
+
 const wss = new WebSocketServer({
     server,
-    maxPayload: 2048
+    maxPayload: 120000
 });
 
 function send(ws, message) {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState === 1) {
         ws.send(JSON.stringify(message));
     }
 }
 
 function broadcast(room, message, except) {
     for (const [ws, info] of players) {
-        if (info.room === room && ws !== except) {
+        if (
+            info.room === room &&
+            ws !== except
+        ) {
             send(ws, message);
         }
     }
 }
 
-// ÎNCARCĂ SAU CREEAZĂ LUMEA ÎN SUPABASE
-async function getRoom(code) {
-    const seed = crypto.randomInt(1, 1000000);
+/* ==========================================
+   VERIFICAREA SKINURILOR PNG
+   ========================================== */
 
-    await database.query(
-        `INSERT INTO public.rooms (code, seed, blocks)
-         VALUES ($1, $2, '{}'::jsonb)
-         ON CONFLICT (code) DO NOTHING`,
-        [code, seed]
-    );
-
-    const result = await database.query(
-        "SELECT seed, blocks FROM public.rooms WHERE code = $1",
-        [code]
-    );
-
-    if (!result.rows.length) {
-        throw new Error("Lumea nu a fost găsită.");
+function validSkin(skin) {
+    if (
+        typeof skin !== "string" ||
+        skin.length > 90000 ||
+        !skin.startsWith(
+            "data:image/png;base64,"
+        )
+    ) {
+        return false;
     }
 
-    return result.rows[0];
-}
+    const encoded = skin.substring(
+        "data:image/png;base64,".length
+    );
 
-// SALVEAZĂ BLOCURILE ÎN SUPABASE
-async function saveBlock(room, x, y, z, blockType) {
-    const key = `${x},${y},${z}`;
-    const client = await database.connect();
-
-    try {
-        await client.query("BEGIN");
-
-        const result = await client.query(
-            `SELECT blocks FROM public.rooms
-             WHERE code = $1 FOR UPDATE`,
-            [room]
-        );
-
-        if (!result.rows.length) {
-            await client.query("ROLLBACK");
-            return false;
-        }
-
-        const blocks = result.rows[0].blocks || {};
-
-        if (
-            !Object.prototype.hasOwnProperty.call(blocks, key) &&
-            Object.keys(blocks).length >= 20000
-        ) {
-            await client.query("ROLLBACK");
-            return false;
-        }
-
-        blocks[key] = blockType;
-
-        await client.query(
-            `UPDATE public.rooms
-             SET blocks = $2::jsonb
-             WHERE code = $1`,
-            [room, JSON.stringify(blocks)]
-        );
-
-        await client.query("COMMIT");
-        return true;
-
-    } catch (error) {
-        await client.query("ROLLBACK").catch(() => {});
-        throw error;
-    } finally {
-        client.release();
+    if (
+        !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)
+    ) {
+        return false;
     }
+
+    const buffer = Buffer.from(
+        encoded,
+        "base64"
+    );
+
+    if (
+        buffer.length < 24 ||
+        buffer.length > 65536
+    ) {
+        return false;
+    }
+
+    const pngSignature = Buffer.from(
+        "89504e470d0a1a0a",
+        "hex"
+    );
+
+    if (
+        !buffer.subarray(0, 8)
+            .equals(pngSignature)
+    ) {
+        return false;
+    }
+
+    if (
+        buffer.toString("ascii", 12, 16) !==
+        "IHDR"
+    ) {
+        return false;
+    }
+
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+
+    const validDimensions =
+        (width === 64 && height === 64) ||
+        (width === 64 && height === 32) ||
+        (width === 128 && height === 128) ||
+        (width === 128 && height === 64);
+
+    return validDimensions;
 }
 
-// CONEXIUNI JUCĂTORI
+/* ==========================================
+   CONEXIUNI MULTIPLAYER
+   ========================================== */
+
 wss.on("connection", ws => {
+
     ws.on("error", console.error);
 
-    let queue = Promise.resolve();
-
     ws.on("message", raw => {
-        queue = queue.then(async () => {
-            let data;
 
-            try {
-                data = JSON.parse(raw.toString());
-            } catch {
-                return;
-            }
+        let data;
 
-            let info = players.get(ws);
+        try {
+            data = JSON.parse(
+                raw.toString()
+            );
+        } catch {
+            return;
+        }
 
-            // INTRARE ÎN LUME
-            if (data.type === "join" && !info) {
-                const session = sessions.get(data.token);
+        if (
+            !data ||
+            typeof data !== "object"
+        ) {
+            return;
+        }
 
-                if (
-                    !session ||
-                    session.expires < Date.now()
-                ) {
-                    send(ws, {
-                        type: "error",
-                        message: "Conectează-te din nou la cont."
-                    });
-                    return;
-                }
+        let info = players.get(ws);
 
-                const room = String(
-                    data.room || ""
-                ).toUpperCase();
+        /* ==============================
+           INTRARE IN LUME
+           ============================== */
 
-                if (!/^[A-Z0-9]{4,10}$/.test(room)) {
-                    send(ws, {
-                        type: "error",
-                        message: "Codul lumii trebuie să aibă 4-10 caractere."
-                    });
-                    return;
-                }
-
-                const saved = await getRoom(room);
-
-                if (ws.readyState !== WebSocket.OPEN) {
-                    return;
-                }
-
-                info = {
-                    name: session.name,
-                    room,
-                    position: { x: 0, y: 10, z: 0 }
-                };
-
-                const others = [...players.values()]
-                    .filter(p => p.room === room)
-                    .map(p => ({
-                        name: p.name,
-                        position: p.position
-                    }));
-
-                players.set(ws, info);
-
-                send(ws, {
-                    type: "joined",
-                    room,
-                    seed: saved.seed,
-                    blocks: saved.blocks,
-                    players: others
-                });
-
-                broadcast(room, {
-                    type: "player",
-                    name: info.name,
-                    position: info.position
-                }, ws);
-
-                return;
-            }
-
-            if (!info) return;
-
-            // MIȘCAREA JUCĂTORILOR
-            if (data.type === "move") {
-                const p = data.position;
-
-                if (
-                    !p ||
-                    ![p.x, p.y, p.z].every(
-                        v => Number.isFinite(v) &&
-                             Math.abs(v) < 100000
-                    )
-                ) {
-                    return;
-                }
-
-                info.position = {
-                    x: p.x,
-                    y: p.y,
-                    z: p.z
-                };
-
-                broadcast(info.room, {
-                    type: "player",
-                    name: info.name,
-                    position: info.position
-                }, ws);
-            }
-
-            // CONSTRUIRE ȘI MINARE
-            if (data.type === "block") {
-                const { x, y, z, blockType } = data;
-
-                if (
-                    ![x, y, z, blockType].every(Number.isInteger) ||
-                    Math.abs(x) > 5000 ||
-                    Math.abs(z) > 5000 ||
-                    y < -12 ||
-                    y > 256 ||
-                    blockType < -1 ||
-                    blockType > 255
-                ) {
-                    return;
-                }
-
-                const saved = await saveBlock(
-                    info.room, x, y, z, blockType
-                );
-
-                if (saved) {
-                    broadcast(info.room, {
-                        type: "block",
-                        x, y, z, blockType
-                    }, ws);
-                } else {
-                    send(ws, {
-                        type: "error",
-                        message: "Limita lumii a fost atinsă."
-                    });
-                }
-            }
-
-        }).catch(error => {
-            console.error(
-                "Eroare multiplayer:",
-                error.message
+        if (
+            data.type === "join" &&
+            !info
+        ) {
+            const session = sessions.get(
+                data.token
             );
 
+            if (
+                !session ||
+                session.expires < Date.now()
+            ) {
+                send(ws, {
+                    type: "error",
+                    message:
+                        "Conecteaza-te din nou la cont."
+                });
+
+                return;
+            }
+
+            const room = String(
+                data.room || ""
+            ).toUpperCase();
+
+            if (
+                !/^[A-Z0-9]{4,10}$/.test(room)
+            ) {
+                send(ws, {
+                    type: "error",
+                    message:
+                        "Codul lumii trebuie sa aiba 4-10 caractere."
+                });
+
+                return;
+            }
+
+            if (!rooms[room]) {
+                rooms[room] = {
+                    seed: crypto.randomInt(
+                        1,
+                        1000000
+                    ),
+                    blocks: {}
+                };
+
+                saveJSON(
+                    "rooms.json",
+                    rooms
+                );
+            }
+
+            info = {
+                name: session.name,
+                room,
+                position: {
+                    x: 0,
+                    y: 10,
+                    z: 0
+                },
+                yaw: 0,
+                skin: null,
+                lastSkinAt: 0
+            };
+
+            // Jucatorii deja conectati
+            const others = [...players.values()]
+                .filter(p => p.room === room)
+                .map(p => ({
+                    name: p.name,
+                    position: p.position,
+                    yaw: p.yaw
+                }));
+
+            players.set(ws, info);
+
+            // Trimitem lumea si jucatorii
             send(ws, {
-                type: "error",
-                message: "Eroare la salvarea lumii."
+                type: "joined",
+                room,
+                seed: rooms[room].seed,
+                blocks: rooms[room].blocks,
+                players: others
             });
-        });
+
+            // Trimitem separat skinurile
+            // jucatorilor deja conectati
+            for (const other of players.values()) {
+                if (
+                    other !== info &&
+                    other.room === room &&
+                    other.skin
+                ) {
+                    send(ws, {
+                        type: "skin",
+                        name: other.name,
+                        skin: other.skin
+                    });
+                }
+            }
+
+            // Anuntam prietenii
+            broadcast(room, {
+                type: "player",
+                name: info.name,
+                position: info.position,
+                yaw: info.yaw
+            }, ws);
+
+            console.log(
+                info.name +
+                " a intrat in lumea " +
+                room
+            );
+
+            return;
+        }
+
+        // Fara cont conectat nu se continua
+        if (!info) return;
+
+        /* ==============================
+           SKINURI MINECRAFT
+           ============================== */
+
+        if (data.type === "skin") {
+
+            const skin = data.skin;
+
+            if (!validSkin(skin)) {
+                send(ws, {
+                    type: "error",
+                    message:
+                        "Skin PNG invalid sau prea mare."
+                });
+
+                return;
+            }
+
+            const now = Date.now();
+
+            if (
+                now - info.lastSkinAt < 1000
+            ) {
+                return;
+            }
+
+            info.lastSkinAt = now;
+
+            // Skinul este pastrat
+            // pentru aceasta conexiune
+            info.skin = skin;
+
+            // Prietenii primesc skinul
+            broadcast(info.room, {
+                type: "skin",
+                name: info.name,
+                skin: info.skin
+            }, ws);
+
+            console.log(
+                "Skin actualizat: " +
+                info.name
+            );
+
+            return;
+        }
+
+        /* ==============================
+           CHAT MULTIPLAYER
+           ============================== */
+
+        if (data.type === "chat") {
+
+            if (
+                typeof data.text !== "string"
+            ) {
+                return;
+            }
+
+            const message = data.text
+                .trim()
+                .slice(0, 200);
+
+            if (!message) return;
+
+            const now = Date.now();
+
+            if (
+                now - (info.lastChatAt || 0) <
+                500
+            ) {
+                return;
+            }
+
+            info.lastChatAt = now;
+
+            broadcast(info.room, {
+                type: "chat",
+                name: info.name,
+                text: message
+            });
+
+            return;
+        }
+
+        /* ==============================
+           MISCAREA JUCATORILOR
+           ============================== */
+
+        if (data.type === "move") {
+
+            const p = data.position;
+
+            if (
+                !p ||
+                ![p.x, p.y, p.z].every(
+                    v =>
+                        Number.isFinite(v) &&
+                        Math.abs(v) < 100000
+                )
+            ) {
+                return;
+            }
+
+            info.position = {
+                x: p.x,
+                y: p.y,
+                z: p.z
+            };
+
+            // Rotatia personajului
+            if (
+                Number.isFinite(data.yaw)
+            ) {
+                info.yaw = data.yaw;
+            }
+
+            broadcast(info.room, {
+                type: "player",
+                name: info.name,
+                position: info.position,
+                yaw: info.yaw
+            }, ws);
+
+            return;
+        }
+
+        /* ==============================
+           BLOCURI CONSTRUITE / MINATE
+           ============================== */
+
+        if (data.type === "block") {
+
+            const {
+                x,
+                y,
+                z,
+                blockType
+            } = data;
+
+            if (
+                ![x, y, z, blockType]
+                    .every(Number.isInteger) ||
+                Math.abs(x) > 5000 ||
+                Math.abs(z) > 5000 ||
+                y < -12 ||
+                y > 256 ||
+                blockType < -1 ||
+                blockType > 255
+            ) {
+                return;
+            }
+
+            const blocks =
+                rooms[info.room].blocks;
+
+            const key =
+                `${x},${y},${z}`;
+
+            if (
+                !(key in blocks) &&
+                Object.keys(blocks).length >=
+                20000
+            ) {
+                return;
+            }
+
+            blocks[key] = blockType;
+
+            saveJSON(
+                "rooms.json",
+                rooms
+            );
+
+            broadcast(info.room, {
+                type: "block",
+                x,
+                y,
+                z,
+                blockType
+            }, ws);
+
+            return;
+        }
     });
 
-    // JUCĂTOR DECONECTAT
+    /* ==============================
+       IESIREA JUCATORULUI
+       ============================== */
+
     ws.on("close", () => {
+
         const info = players.get(ws);
+
         if (!info) return;
 
         players.delete(ws);
@@ -563,44 +888,53 @@ wss.on("connection", ws => {
             type: "leave",
             name: info.name
         });
+
+        console.log(
+            info.name +
+            " a iesit din lumea " +
+            info.room
+        );
     });
 });
 
-// PORNIRE SERVER
-async function start() {
-    try {
-        await database.query(
-            "SELECT 1 FROM public.accounts LIMIT 1"
-        );
+/* ==========================================
+   PORNIREA SERVERULUI
+   ========================================== */
 
-        await database.query(
-            "SELECT 1 FROM public.rooms LIMIT 1"
+server.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+        console.log(
+            "================================"
         );
 
         console.log(
-            "Square Stack: Supabase conectat!"
+            "SQUARE STACK MULTIPLAYER"
         );
 
         console.log(
-            "Tabelele accounts și rooms funcționează!"
+            "Server: http://localhost:" + PORT
         );
 
-        server.listen(PORT, "0.0.0.0", () => {
-            console.log(
-                "Square Stack multiplayer: http://localhost:" +
-                PORT
-            );
-        });
-
-    } catch (error) {
-        console.error(
-            "Eroare la pornirea serverului:",
-            error.message
+        console.log(
+            "Skinuri Minecraft: activate"
         );
 
-        await database.end().catch(() => {});
-        process.exitCode = 1;
+        console.log(
+            "Conturi: activate"
+        );
+
+        console.log(
+            "Lumi multiplayer: activate"
+        );
+
+        console.log(
+            "================================"
+        );
     }
-}
+);
 
-start();
+if (database) {
+    testDatabase();
+}

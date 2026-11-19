@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="ro">
+
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0,
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,
                    maximum-scale=1.0, user-scalable=no">
 
     <title>⛏️ SQUARE STACK</title>
@@ -63,12 +62,7 @@
 
         <h2>🌱 Creează o lume</h2>
 
-        <input
-            type="text"
-            id="world-name"
-            placeholder="Numele lumii"
-            value="Lumea mea"
-        >
+        <input type="text" id="world-name" placeholder="Numele lumii" value="Lumea mea">
 
         <label for="world-type">Tipul lumii</label>
 
@@ -123,6 +117,60 @@
             <option value="third">Persoana a treia</option>
         </select>
 
+        <h3>👕 Skinul meu</h3>
+
+        <input type="file" id="skin-file" accept="image/png">
+
+        <br><br>
+
+        <img id="skin-preview" width="128" height="128" style="image-rendering: pixelated;">
+
+        <br>
+
+        <button onclick="saveSkin()">
+            💾 Salvează skinul
+        </button>
+
+
+        <hr>
+
+        <h2>🎨 Texture Pack-urile mele</h2>
+
+        <p>Încarcă texturi noi în Square Stack!</p>
+
+        <input type="file" id="texture-pack-file" accept=".zip">
+
+        <button onclick="installTexturePack()">
+            📦 Instalează Texture Pack
+        </button>
+
+        <button onclick="resetTexturePack()">
+            🔄 Texturi originale
+        </button>
+
+        <p id="texture-pack-status">
+            Nu ai instalat niciun Texture Pack.
+        </p>
+
+        <h3>📦 Pachetele instalate</h3>
+        <div id="texture-pack-list"></div>
+
+        <hr>
+
+        <h2>🧩 Mod Pack-uri Square Stack</h2>
+        <p>Instalează moduri ZIP pentru joc!</p>
+
+        <input type="file" id="mod-pack-file" accept=".zip">
+
+        <button onclick="installSquareStackMod()">
+            📦 Instalează Mod
+        </button>
+
+        <p id="mod-pack-status">Niciun mod încărcat.</p>
+
+        <h3>Modurile mele</h3>
+        <div id="mod-pack-list"></div>
+
         <button onclick="saveSettings()">
             💾 Salvează setările
         </button>
@@ -139,11 +187,8 @@
 
         <h2>👤 Contul meu</h2>
 
-        <input
-            type="text"
-            id="username"
-            placeholder="Numele jucătorului"
-        >
+        <input type="text" id="username" placeholder="Numele jucătorului">
+
 
         <button onclick="saveAccount()">
             💾 Salvează profilul local
@@ -172,20 +217,9 @@
 
         <h3>👤 Cont Square Stack</h3>
 
-        <input
-            id="mp-name"
-            type="text"
-            placeholder="Numele jucătorului"
-            maxlength="20"
-            autocomplete="username"
-        >
+        <input id="mp-name" type="text" placeholder="Numele jucătorului" maxlength="20" autocomplete="username">
 
-        <input
-            id="mp-password"
-            type="password"
-            placeholder="Parola contului"
-            autocomplete="current-password"
-        >
+        <input id="mp-password" type="password" placeholder="Parola contului" autocomplete="current-password">
 
         <button id="mp-register">
             ➕ Creează cont
@@ -194,24 +228,20 @@
         <button id="mp-login">
             🔑 Conectare
         </button>
-        
-<h3>👕 Skinul meu</h3>
 
-<input type="file" id="skin-file"
-       accept="image/png">
+        <h3>👕 Skinul meu</h3>
 
-<br><br>
+        <input type="file" id="skin-file" accept="image/png">
 
-<img id="skin-preview"
-     width="128"
-     height="128"
-     style="image-rendering: pixelated;">
+        <br><br>
 
-<br>
+        <img id="skin-preview" width="128" height="128" style="image-rendering: pixelated;">
 
-<button onclick="saveSkin()">
-    💾 Salvează skinul
-</button>
+        <br>
+
+        <button onclick="saveSkin()">
+            💾 Salvează skinul
+        </button>
 
 
         <h3>🎮 Joacă împreună</h3>
@@ -221,13 +251,7 @@
             ca prietenii tăi.
         </p>
 
-        <input
-            id="mp-room"
-            type="text"
-            placeholder="Codul lumii"
-            value="CASA123"
-            maxlength="10"
-        >
+        <input id="mp-room" type="text" placeholder="Codul lumii" value="CASA123" maxlength="10">
 
         <button id="mp-join">
             🌍 Intră / Creează lume
@@ -322,7 +346,7 @@
 
     <!-- MOTORUL 3D -->
     <script src="main.js"></script>
-
+    <script src="items1000.js"></script>
 
     <!-- ANIMALE ȘI INAMICI -->
     <script src="enemies.js"></script>
@@ -331,18 +355,28 @@
 
     <!-- MULTIPLAYER -->
     <script src="multiplayer.js"></script>
-   <script src="pc-controls.js"></script>
+    <script src="pc-controls.js"></script>
+    <script src="avatar3d.js"></script>
 
+
+
+    <!-- Biblioteca pentru citirea fisierelor ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Modulul Texture Packs -->
+    <script src="texture-packs.js"></script>
+    <script src="mod-loader.js"></script>
     <!-- MENIURI ȘI ERORI -->
     <script>
         function openWorldMenu() {
             showMenu("world-menu");
         }
 
-        window.addEventListener("error", function(event) {
+        window.addEventListener("error", function (event) {
             console.error("Square Stack:", event.message);
         });
     </script>
 
 </body>
+
 </html>

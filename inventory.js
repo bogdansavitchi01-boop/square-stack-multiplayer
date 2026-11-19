@@ -338,6 +338,36 @@ function importInventoryData(data) {
                 : item.count
     }));
 
+
+    // Adăugăm obiectele noi în lumile Creative salvate
+    if (INVENTORY_GAME_MODE === "creative") {
+
+        for (let type = 0; type < BLOCK_TYPES.length; type++) {
+
+            const exists = PLAYER_INVENTORY.some(
+                item => item.type === type && item.count > 0
+            );
+
+            if (!exists) {
+                const newItem = {
+                    type: type,
+                    count: Infinity
+                };
+
+                const emptySlot = PLAYER_INVENTORY.findIndex(
+                    item => item.type < 0 || item.count <= 0
+                );
+
+                if (emptySlot >= 0) {
+                    PLAYER_INVENTORY[emptySlot] = newItem;
+                } else {
+                    PLAYER_INVENTORY.push(newItem);
+                }
+            }
+        }
+    }
+
+
     renderInventory();
 }
 
@@ -363,3 +393,144 @@ function getBlockIcon(type) {
 
 console.log("2016CRAFT: inventory.js încărcat!");
 
+
+// INVENTAR COMPLET - SQUARE STACK
+
+function isInventoryPanelOpen() {
+    const panel = document.getElementById("square-inventory-overlay");
+    return !!panel && panel.style.display !== "none";
+}
+
+function closeInventoryPanel() {
+    const panel = document.getElementById("square-inventory-overlay");
+
+    if (panel) {
+        panel.style.display = "none";
+    }
+}
+
+function createInventoryPanel() {
+    let panel = document.getElementById("square-inventory-overlay");
+
+    if (panel) return panel;
+
+    panel = document.createElement("div");
+    panel.id = "square-inventory-overlay";
+    panel.style.display = "none";
+
+    panel.innerHTML = `
+        <div class="square-inventory-window">
+            <div class="square-inventory-header">
+                <strong>🎒 Inventar</strong>
+                <button id="square-inventory-close" type="button">✕</button>
+            </div>
+            <p>Alege un bloc pentru construire:</p>
+            <div id="square-inventory-grid"></div>
+        </div>
+    `;
+
+    document.body.appendChild(panel);
+
+    document.getElementById("square-inventory-close")
+        .addEventListener("click", closeInventoryPanel);
+
+    panel.addEventListener("click", function (event) {
+        if (event.target === panel) {
+            closeInventoryPanel();
+        }
+    });
+
+    return panel;
+}
+
+
+function renderFullInventory() {
+    const grid = document.getElementById("square-inventory-grid");
+    if (!grid) return;
+
+    // Inventar mare: 36 de locuri
+    const TOTAL_SLOTS = 36;
+
+    while (PLAYER_INVENTORY.length < TOTAL_SLOTS) {
+        PLAYER_INVENTORY.push({
+            type: -1,
+            count: 0
+        });
+    }
+
+    grid.innerHTML = "";
+
+    for (let i = 0; i < PLAYER_INVENTORY.length; i++) {
+        const item = PLAYER_INVENTORY[i];
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "square-inventory-item";
+
+        if (i === SELECTED_SLOT) {
+            button.classList.add("selected");
+        }
+
+        if (item.type >= 0 && item.count > 0) {
+            const icon = getBlockIcon(item.type);
+            const name = getBlockName(item.type);
+            const count = item.count === Infinity ? "∞" : item.count;
+
+            button.textContent = icon + " " + count;
+            button.title = name;
+        } else {
+            button.textContent = "";
+            button.title = "Loc gol";
+        }
+
+        button.addEventListener("click", function () {
+            if (i < HOTBAR_SIZE) {
+                SELECTED_SLOT = i;
+            } else if (item.type >= 0 && item.count > 0) {
+                const oldItem = PLAYER_INVENTORY[SELECTED_SLOT];
+
+                PLAYER_INVENTORY[SELECTED_SLOT] = PLAYER_INVENTORY[i];
+                PLAYER_INVENTORY[i] = oldItem;
+            } else {
+                return;
+            }
+
+            renderInventory();
+            closeInventoryPanel();
+        });
+
+        grid.appendChild(button);
+    }
+}
+
+
+function toggleInventoryPanel() {
+    if (!gameRunning) return;
+
+    const panel = createInventoryPanel();
+
+    if (isInventoryPanelOpen()) {
+        closeInventoryPanel();
+        return;
+    }
+
+    keys.forward = false;
+    keys.back = false;
+    keys.left = false;
+    keys.right = false;
+
+    renderFullInventory();
+    panel.style.display = "flex";
+}
+
+
+// MOBILIER ÎN INVENTAR
+INVENTORY_BLOCK_NAMES.push(
+    "Scaun",
+    "Masă",
+    "Lampă",
+    "Ușă"
+);
+
+
+INVENTORY_BLOCK_ICONS.push("🪑", "🍽️", "💡", "🚪");

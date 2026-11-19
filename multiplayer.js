@@ -2,7 +2,7 @@
 /* SQUARE STACK - MULTIPLAYER */
 
 
-const MP_SERVER_URL = "https://square-stack-multiplayer.onrender.com";
+const MP_SERVER_URL = "http://localhost:3000";
 
 const mpServerOrigin =
     MP_SERVER_URL.trim().replace(/\/$/, "") ||
@@ -177,9 +177,9 @@ function mpJoin() {
 
     mpActive = false;
 
-    
-const socket = new WebSocket(mpWebSocketUrl);
-  
+
+    const socket = new WebSocket(mpWebSocketUrl);
+
 
     mpSocket = socket;
     mpStatus("Se conectează la lumea " + room + "...");
@@ -289,7 +289,7 @@ const socket = new WebSocket(mpWebSocketUrl);
 // SINCRONIZĂM BLOCURILE
 const mpOriginalSetBlock = setWorldBlock;
 
-setWorldBlock = function(x, y, z, blockType) {
+setWorldBlock = function (x, y, z, blockType) {
     mpOriginalSetBlock(x, y, z, blockType);
 
     if (
@@ -327,7 +327,7 @@ setInterval(() => {
 // IEȘIRE DIN MULTIPLAYER
 const mpOriginalPause = pauseGame;
 
-pauseGame = function() {
+pauseGame = function () {
     mpActive = false;
 
     if (mpSocket) {
@@ -355,7 +355,7 @@ if (mpUsername) {
 let selectedSkin = null;
 
 document.getElementById("skin-file")
-    .addEventListener("change", function(event) {
+    .addEventListener("change", function (event) {
         const file = event.target.files[0];
 
         if (!file) return;
@@ -367,7 +367,7 @@ document.getElementById("skin-file")
 
         const reader = new FileReader();
 
-        reader.onload = function() {
+        reader.onload = function () {
             selectedSkin = reader.result;
 
             document.getElementById("skin-preview").src =
@@ -390,3 +390,58 @@ function saveSkin() {
         alert("Skinul nu a putut fi salvat.");
     }
 }
+
+
+
+/* REPARARE INCARCARE SKIN - SQUARE STACK */
+
+document.querySelectorAll('input[id="skin-file"]').forEach(input => {
+    input.addEventListener("change", function () {
+        const file = this.files[0];
+
+        if (!file) return;
+
+        if (!file.name.toLowerCase().endsWith(".png")) {
+            alert("Alege un skin PNG!");
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function () {
+            const image = new Image();
+
+            image.onload = function () {
+                const valid =
+                    (image.width === 64 &&
+                        (image.height === 64 ||
+                            image.height === 32)) ||
+                    (image.width === 128 &&
+                        image.height === 128);
+
+                if (!valid) {
+                    alert(
+                        "Skinul trebuie sa fie 64x64, " +
+                        "64x32 sau 128x128 pixeli!"
+                    );
+                    return;
+                }
+
+                selectedSkin = reader.result;
+
+                document.querySelectorAll(
+                    '[id="skin-preview"]'
+                ).forEach(preview => {
+                    preview.src = selectedSkin;
+                    preview.style.display = "block";
+                });
+
+                console.log("Skin incarcat cu succes!");
+            };
+
+            image.src = reader.result;
+        };
+
+        reader.readAsDataURL(file);
+    });
+});
