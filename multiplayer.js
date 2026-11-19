@@ -2,7 +2,7 @@
 /* SQUARE STACK - MULTIPLAYER */
 
 
-const MP_SERVER_URL = "http://localhost:3000";
+const MP_SERVER_URL = "https://square-stack-multiplayer-1.onrender.com";
 
 const mpServerOrigin =
     MP_SERVER_URL.trim().replace(/\/$/, "") ||
