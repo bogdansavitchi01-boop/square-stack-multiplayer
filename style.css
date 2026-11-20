@@ -535,3 +535,53 @@ label {
 .square-inventory-item:hover {
     background: #397b39;
 }
+
+/* BUTOANELE MODURILOR - DIMENSIUNI CORECTE */
+#mod-pack-list {
+    width: min(100%, 420px);
+    max-width: 100%;
+}
+
+#mod-pack-list > div {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+#settings-menu #mod-pack-list button {
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    height: auto;
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-width: 2px;
+    box-shadow: none;
+}
+
+#settings-menu #mod-pack-list input[type="checkbox"] {
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0;
+    flex: 0 0 20px;
+}
+
+#mod-pack-list span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+}
+
+@media (max-width: 600px) {
+    #settings-menu #mod-pack-list button {
+        min-height: 32px;
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    #mod-pack-list span {
+        font-size: 12px;
+    }
+}
