@@ -837,3 +837,96 @@ button:disabled {
         transition: none;
     }
 }
+
+/* INVENTAR CREATIV CU FILE PENTRU MODURI */
+.square-inventory-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+}
+
+.square-inventory-tabs button {
+    width: auto;
+    min-width: 110px;
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 13px;
+    box-shadow: none;
+}
+
+.square-inventory-tabs button.active {
+    background: linear-gradient(180deg, #e2b94e, #a97820);
+    border-color: #ffe28a;
+    color: #202020;
+}
+
+#square-inventory-mods {
+    width: 100%;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+#square-inventory-mods #mod-pack-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+#square-inventory-mods #mod-pack-list > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    margin: 0 !important;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 9px;
+    background: rgba(255,255,255,.06);
+}
+
+#square-inventory-mods #mod-pack-list span {
+    flex: 1 1 120px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+
+#square-inventory-mods #mod-pack-list button {
+    width: auto;
+    min-width: 66px;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 11px;
+    box-shadow: none;
+}
+
+#square-inventory-mods #mod-pack-list input[type="checkbox"] {
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0;
+}
+
+@media (max-width: 600px) {
+    .square-inventory-tabs button {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 40px;
+        font-size: 12px;
+    }
+
+    #square-inventory-mods #mod-pack-list > div {
+        padding: 7px;
+    }
+
+    #square-inventory-mods #mod-pack-list span {
+        font-size: 12px;
+    }
+
+    #square-inventory-mods #mod-pack-list button {
+        min-height: 36px;
+    }
+}
