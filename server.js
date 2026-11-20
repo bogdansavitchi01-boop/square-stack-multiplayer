@@ -388,7 +388,7 @@ const server = http.createServer(
             url.pathname.substring(1);
 
         if (!filename) {
-            filename = "site.html";
+            filename = "index.html";
         }
 
         const allowed =
