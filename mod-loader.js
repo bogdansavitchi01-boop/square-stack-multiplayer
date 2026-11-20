@@ -367,6 +367,9 @@
         }
     }
 
+    // Funcție publică pentru fila „Moduri” din inventarul creativ
+    window.renderSquareStackModList = renderModList;
+
     // INSTALAREA UNUI MOD ZIP
 
     window.installSquareStackMod = async function () {
