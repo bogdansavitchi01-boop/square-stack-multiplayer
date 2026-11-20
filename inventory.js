@@ -425,7 +425,15 @@ function createInventoryPanel() {
                 <button id="square-inventory-close" type="button">✕</button>
             </div>
             <p>Alege un bloc pentru construire:</p>
+            <div class="square-inventory-tabs">
+                <button type="button" id="square-tab-blocks" class="active">🧱 Blocuri</button>
+                <button type="button" id="square-tab-mods">🧩 Moduri</button>
+            </div>
             <div id="square-inventory-grid"></div>
+            <div id="square-inventory-mods" class="hidden">
+                <p>Modurile instalate în Square Stack</p>
+                <div id="mod-pack-list"></div>
+            </div>
         </div>
     `;
 
@@ -433,6 +441,29 @@ function createInventoryPanel() {
 
     document.getElementById("square-inventory-close")
         .addEventListener("click", closeInventoryPanel);
+
+    const blocksTab = document.getElementById("square-tab-blocks");
+    const modsTab = document.getElementById("square-tab-mods");
+    const blocksGrid = document.getElementById("square-inventory-grid");
+    const modsPanel = document.getElementById("square-inventory-mods");
+
+    blocksTab.addEventListener("click", function () {
+        blocksGrid.classList.remove("hidden");
+        modsPanel.classList.add("hidden");
+        blocksTab.classList.add("active");
+        modsTab.classList.remove("active");
+    });
+
+    modsTab.addEventListener("click", async function () {
+        if (INVENTORY_GAME_MODE !== "creative") return;
+        blocksGrid.classList.add("hidden");
+        modsPanel.classList.remove("hidden");
+        modsTab.classList.add("active");
+        blocksTab.classList.remove("active");
+        if (typeof window.renderSquareStackModList === "function") {
+            await window.renderSquareStackModList();
+        }
+    });
 
     panel.addEventListener("click", function (event) {
         if (event.target === panel) {
@@ -520,6 +551,9 @@ function toggleInventoryPanel() {
     keys.right = false;
 
     renderFullInventory();
+    const modsTab = document.getElementById("square-tab-mods");
+    if (modsTab) modsTab.style.display = INVENTORY_GAME_MODE === "creative" ? "" : "none";
+    document.getElementById("square-tab-blocks")?.click();
     panel.style.display = "flex";
 }
 
