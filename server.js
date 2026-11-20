@@ -155,7 +155,7 @@ const server = http.createServer(
     async (req, res) => {
 
         const allowedOrigins = [
-            "https://squerstack.netlify.app",
+            "https://squerstackreal.netlify.app",
             "http://127.0.0.1:5500",
             "http://localhost:5500"
         ];
