@@ -425,9 +425,9 @@ function createInventoryPanel() {
                 <button id="square-inventory-close" type="button">✕</button>
             </div>
             <p>Alege un bloc pentru construire:</p>
-            <div class="square-inventory-tabs">
+            <div class="square-inventory-tabs" id="square-inventory-tabs" style="display:flex !important; visibility:visible !important;">
                 <button type="button" id="square-tab-blocks" class="active">🧱 Blocuri</button>
-                <button type="button" id="square-tab-mods">🧩 Moduri</button>
+                <button type="button" id="square-tab-mods" style="display:inline-flex !important; visibility:visible !important;">🧩 Moduri</button>
             </div>
             <div id="square-inventory-grid"></div>
             <div id="square-inventory-mods" class="hidden">
@@ -551,8 +551,16 @@ function toggleInventoryPanel() {
     keys.right = false;
 
     renderFullInventory();
+    const tabs = document.getElementById("square-inventory-tabs");
     const modsTab = document.getElementById("square-tab-mods");
-    if (modsTab) modsTab.style.display = INVENTORY_GAME_MODE === "creative" ? "" : "none";
+    if (tabs) {
+        tabs.style.display = "flex";
+        tabs.style.visibility = "visible";
+    }
+    if (modsTab) {
+        modsTab.style.display = INVENTORY_GAME_MODE === "creative" ? "inline-flex" : "none";
+        modsTab.style.visibility = INVENTORY_GAME_MODE === "creative" ? "visible" : "hidden";
+    }
     document.getElementById("square-tab-blocks")?.click();
     panel.style.display = "flex";
 }
