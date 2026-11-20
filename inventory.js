@@ -431,7 +431,8 @@ function createInventoryPanel() {
             </div>
             <div id="square-inventory-grid"></div>
             <div id="square-inventory-mods" class="hidden">
-                <p>Modurile instalate în Square Stack</p>
+                <p>🧩 Moduri instalate și instrumente</p>
+                <div id="square-mod-tools" class="square-mod-tools"></div>
                 <div id="mod-pack-list"></div>
             </div>
         </div>
@@ -464,6 +465,58 @@ function createInventoryPanel() {
             await window.renderSquareStackModList();
         }
     });
+
+    // Mutăm butoanele de catalog create de moduri în fila 🧩 Moduri.
+    // Meniurile lor rămân în document și își păstrează funcțiile originale.
+    const tools = document.getElementById("square-mod-tools");
+    const toolIds = [
+        "advanced-building",
+        "furniture-plus-button",
+        "technology-button",
+        "electricity-button"
+    ];
+    const movedTools = new WeakSet();
+
+    function collectModTools() {
+        if (!tools) return;
+
+        for (const id of toolIds) {
+            const button = document.getElementById(id);
+            if (!button || movedTools.has(button)) continue;
+
+            movedTools.add(button);
+            button.dataset.squareModTool = "1";
+            button.style.setProperty("position", "relative", "important");
+            button.style.setProperty("right", "auto", "important");
+            button.style.setProperty("left", "auto", "important");
+            button.style.setProperty("top", "auto", "important");
+            button.style.setProperty("bottom", "auto", "important");
+            button.style.setProperty("z-index", "1", "important");
+            button.style.setProperty("display", "inline-flex", "important");
+            button.style.setProperty("width", "100%", "important");
+            button.style.setProperty("min-height", "42px", "important");
+            button.style.setProperty("margin", "0", "important");
+            button.style.setProperty("justify-content", "center", "important");
+            button.style.setProperty("box-sizing", "border-box", "important");
+            tools.appendChild(button);
+
+            button.addEventListener("click", function () {
+                closeInventoryPanel();
+            });
+        }
+    }
+
+    collectModTools();
+
+    if (!window.squareStackModToolsObserver) {
+        window.squareStackModToolsObserver = new MutationObserver(
+            collectModTools
+        );
+        window.squareStackModToolsObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
 
     panel.addEventListener("click", function (event) {
         if (event.target === panel) {
