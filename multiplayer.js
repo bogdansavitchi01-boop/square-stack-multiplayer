@@ -289,10 +289,21 @@ function mpJoin() {
             }
         }
 
+        if (data.type === "block_saved") {
+            mpStatus("✅ Bloc salvat în lumea " + data.room + ".");
+        }
+
+        if (data.type === "block_rejected") {
+            mpStatus("❌ " + data.message);
+        }
+
         if (data.type === "block" && mpActive) {
             mpNetworkApplying = true;
-            setWorldBlock(data.x, data.y, data.z, data.blockType);
-            mpNetworkApplying = false;
+            try {
+                setWorldBlock(data.x, data.y, data.z, data.blockType);
+            } finally {
+                mpNetworkApplying = false;
+            }
         }
     };
 
@@ -309,9 +320,21 @@ function mpJoin() {
 // SINCRONIZĂM BLOCURILE
 const mpOriginalSetBlock = setWorldBlock;
 setWorldBlock = function (x, y, z, blockType) {
-    mpOriginalSetBlock(x, y, z, blockType);
+    const bx = Math.floor(Number(x));
+    const by = Math.floor(Number(y));
+    const bz = Math.floor(Number(z));
+    const bt = Number(blockType);
+
+    mpOriginalSetBlock(bx, by, bz, bt);
+
     if (mpActive && !mpNetworkApplying && mpSocket?.readyState === WebSocket.OPEN) {
-        mpSocket.send(JSON.stringify({ type: "block", x, y, z, blockType }));
+        mpSocket.send(JSON.stringify({
+            type: "block",
+            x: bx,
+            y: by,
+            z: bz,
+            blockType: bt
+        }));
     }
 };
 
