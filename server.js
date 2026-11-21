@@ -464,7 +464,7 @@ wss.on("connection", (ws, request) => {
                     "UPDATE square_rooms " +
                     "SET blocks = jsonb_set(blocks, ARRAY[$2]::text[], to_jsonb($3::integer), true), " +
                     "updated_at = NOW() " +
-                    "WHERE room_code = $1 AND (blocks ? $2 OR jsonb_object_length(blocks) < 20000)",
+                    "WHERE room_code = $1 AND (blocks ? $2 OR (SELECT COUNT(*) FROM jsonb_object_keys(square_rooms.blocks)) < 20000)",
                     [info.room, key, blockType]
                 );
                 if (!saved.rowCount) return;
