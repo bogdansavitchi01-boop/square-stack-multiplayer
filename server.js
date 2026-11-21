@@ -243,7 +243,7 @@ const server = http.createServer(async (req, res) => {
 
     let filename = url.pathname.substring(1);
     if (!filename) filename = "index.html";
-    const allowedFile = /^[a-zA-Z0-9_.-]+\\.(html|js|css|png|jpg|jpeg|webp)$/;
+    const allowedFile = /^[a-zA-Z0-9_.-]+\.(html|js|css|png|jpg|jpeg|webp)$/;
     if (!allowedFile.test(filename) || filename === "server.js" ||
         filename === "package.json" || filename.startsWith(".")) {
         res.writeHead(404);
@@ -385,7 +385,12 @@ async function handleJoin(ws, data) {
     console.log(info.name + " a intrat in lumea " + room);
 }
 
-wss.on("connection", ws => {
+wss.on("connection", (ws, request) => {
+    const origin = request.headers.origin;
+    if (origin && !allowedOrigins.has(origin)) {
+        ws.close(1008, "Origin not allowed");
+        return;
+    }
     ws.on("error", error => console.error("WebSocket:", error.message));
 
     ws.on("message", async raw => {
@@ -454,20 +459,15 @@ wss.on("connection", ws => {
                     Math.abs(x) > 5000 || Math.abs(z) > 5000 ||
                     y < -12 || y > 256 || blockType < -1 || blockType > 255) return;
 
-                const result = await database.query(
-                    "SELECT blocks FROM square_rooms WHERE room_code = $1",
-                    [info.room]
-                );
-                if (!result.rowCount) return;
-                const blocks = result.rows[0].blocks || {};
                 const key = String(x) + "," + String(y) + "," + String(z);
-                if (!(key in blocks) && Object.keys(blocks).length >= 20000) return;
-                blocks[key] = blockType;
-
-                await database.query(
-                    "UPDATE square_rooms SET blocks = $2::jsonb, updated_at = NOW() WHERE room_code = $1",
-                    [info.room, JSON.stringify(blocks)]
+                const saved = await database.query(
+                    "UPDATE square_rooms " +
+                    "SET blocks = jsonb_set(blocks, ARRAY[$2]::text[], to_jsonb($3::integer), true), " +
+                    "updated_at = NOW() " +
+                    "WHERE room_code = $1 AND (blocks ? $2 OR jsonb_object_length(blocks) < 20000)",
+                    [info.room, key, blockType]
                 );
+                if (!saved.rowCount) return;
                 broadcast(info.room, { type: "block", x, y, z, blockType }, ws);
             }
         } catch (error) {
