@@ -457,7 +457,13 @@ wss.on("connection", (ws, request) => {
                 const { x, y, z, blockType } = data;
                 if (![x, y, z, blockType].every(Number.isInteger) ||
                     Math.abs(x) > 5000 || Math.abs(z) > 5000 ||
-                    y < -12 || y > 256 || blockType < -1 || blockType > 255) return;
+                    y < -12 || y > 256 || blockType < -1 || blockType > 255) {
+                    send(ws, {
+                        type: "block_rejected",
+                        message: "Coordonatele sau tipul blocului nu sunt valide."
+                    });
+                    return;
+                }
 
                 const key = String(x) + "," + String(y) + "," + String(z);
                 const saved = await database.query(
@@ -467,8 +473,17 @@ wss.on("connection", (ws, request) => {
                     "WHERE room_code = $1 AND (blocks ? $2 OR (SELECT COUNT(*) FROM jsonb_object_keys(square_rooms.blocks)) < 20000)",
                     [info.room, key, blockType]
                 );
-                if (!saved.rowCount) return;
+
+                if (!saved.rowCount) {
+                    send(ws, {
+                        type: "block_rejected",
+                        message: "Lumea nu a putut salva blocul. Poate a atins limita de 20.000 de modificări."
+                    });
+                    return;
+                }
+
                 broadcast(info.room, { type: "block", x, y, z, blockType }, ws);
+                send(ws, { type: "block_saved", room: info.room, x, y, z });
             }
         } catch (error) {
             console.error("Eroare mesaj multiplayer:", error.message);
