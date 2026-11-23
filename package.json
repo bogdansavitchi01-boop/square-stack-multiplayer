@@ -1,11 +1,51 @@
-
 {
+  "name": "square-stack-multiplayer",
+  "version": "1.0.0",
+  "description": "Square Stack Multiplayer Online",
+  "main": "electron-main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
   "dependencies": {
     "ws": "^8.22.2",
     "pg": "^8.13.1"
   },
   "devDependencies": {
     "electron": "^45.2.3",
-    "electron-packager": "^17.1.2"
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.squarestack.game",
+    "productName": "Square Stack",
+    "asar": true,
+    "files": [
+      "index.html",
+      "*.js",
+      "*.css",
+      "*.zip",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "SquareStack-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Square Stack"
+    }
   }
 }
