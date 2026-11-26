@@ -1017,3 +1017,19 @@ button:disabled {
         display: none !important;
     }
 }
+
+/* Corectie: ascunde butoanele modurilor oriunde sunt create,
+   dar NU le ascunde dupa ce au fost mutate in fila Moduri. */
+@media (max-width: 1099px) {
+    body :is(#advanced-building, #furniture-plus-button, #technology-button, #electricity-button):not(#square-mod-tools *) {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    #square-mod-tools :is(#advanced-building, #furniture-plus-button, #technology-button, #electricity-button) {
+        display: inline-flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+}
