@@ -466,8 +466,8 @@ function createInventoryPanel() {
         }
     });
 
-    // Mutăm butoanele de catalog create de moduri în fila 🧩 Moduri.
-    // Meniurile lor rămân în document și își păstrează funcțiile originale.
+    // Pe ecrane sub 1100px, mutăm instrumentele modurilor
+    // în fila 🧩 Moduri. Pe ecrane mari le readucem la locul inițial.
     const tools = document.getElementById("square-mod-tools");
     const toolIds = [
         "advanced-building",
@@ -475,47 +475,89 @@ function createInventoryPanel() {
         "technology-button",
         "electricity-button"
     ];
-    const movedTools = new WeakSet();
+    const toolOrigins = new WeakMap();
+    const toolOriginalStyles = new WeakMap();
+    const compactMode = window.matchMedia("(max-width: 1099px)");
 
     function collectModTools() {
         if (!tools) return;
 
         for (const id of toolIds) {
             const button = document.getElementById(id);
-            if (!button || movedTools.has(button)) continue;
+            if (!button) continue;
 
-            movedTools.add(button);
-            button.dataset.squareModTool = "1";
-            button.style.setProperty("position", "relative", "important");
-            button.style.setProperty("right", "auto", "important");
-            button.style.setProperty("left", "auto", "important");
-            button.style.setProperty("top", "auto", "important");
-            button.style.setProperty("bottom", "auto", "important");
-            button.style.setProperty("z-index", "1", "important");
-            button.style.setProperty("display", "inline-flex", "important");
-            button.style.setProperty("width", "100%", "important");
-            button.style.setProperty("min-height", "42px", "important");
-            button.style.setProperty("margin", "0", "important");
-            button.style.setProperty("justify-content", "center", "important");
-            button.style.setProperty("box-sizing", "border-box", "important");
-            tools.appendChild(button);
+            if (!toolOriginalStyles.has(button)) {
+                toolOriginalStyles.set(button, button.getAttribute("style"));
+            }
 
-            button.addEventListener("click", function () {
-                closeInventoryPanel();
-            });
+            if (compactMode.matches) {
+                if (button.parentNode !== tools) {
+                    const marker = document.createComment("square-mod-tool-" + id);
+                    if (button.parentNode) {
+                        button.parentNode.insertBefore(marker, button);
+                        toolOrigins.set(button, marker);
+                    }
+                    tools.appendChild(button);
+                }
+
+                button.style.setProperty("position", "relative", "important");
+                button.style.setProperty("right", "auto", "important");
+                button.style.setProperty("left", "auto", "important");
+                button.style.setProperty("top", "auto", "important");
+                button.style.setProperty("bottom", "auto", "important");
+                button.style.setProperty("z-index", "1", "important");
+                button.style.setProperty("display", "inline-flex", "important");
+                button.style.setProperty("width", "100%", "important");
+                button.style.setProperty("min-height", "34px", "important");
+                button.style.setProperty("height", "auto", "important");
+                button.style.setProperty("padding", "5px 7px", "important");
+                button.style.setProperty("font-size", "11px", "important");
+                button.style.setProperty("margin", "0", "important");
+                button.style.setProperty("justify-content", "center", "important");
+                button.style.setProperty("box-sizing", "border-box", "important");
+
+                if (!button.dataset.squareCloseBound) {
+                    button.dataset.squareCloseBound = "1";
+                    button.addEventListener("click", closeInventoryPanel);
+                }
+            } else if (button.parentNode === tools) {
+                const marker = toolOrigins.get(button);
+                if (marker && marker.parentNode) {
+                    marker.parentNode.insertBefore(button, marker);
+                    marker.remove();
+                }
+
+                const originalStyle = toolOriginalStyles.get(button);
+                if (originalStyle === null) {
+                    button.removeAttribute("style");
+                } else if (typeof originalStyle === "string") {
+                    button.setAttribute("style", originalStyle);
+                }
+
+                toolOrigins.delete(button);
+                toolOriginalStyles.delete(button);
+            }
         }
     }
 
     collectModTools();
 
     if (!window.squareStackModToolsObserver) {
-        window.squareStackModToolsObserver = new MutationObserver(
-            collectModTools
-        );
+        window.squareStackModToolsObserver = new MutationObserver(collectModTools);
         window.squareStackModToolsObserver.observe(document.body, {
             childList: true,
             subtree: true
         });
+    }
+
+    if (!window.squareStackModToolsResizeBound) {
+        window.squareStackModToolsResizeBound = true;
+        window.addEventListener("resize", collectModTools);
+        if (compactMode.addEventListener) {
+            compactMode.addEventListener("change", collectModTools);
+        } else if (compactMode.addListener) {
+            compactMode.addListener(collectModTools);
+        }
     }
 
     panel.addEventListener("click", function (event) {
