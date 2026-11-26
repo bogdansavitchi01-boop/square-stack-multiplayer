@@ -479,11 +479,7 @@ function createInventoryPanel() {
     const toolOriginalStyles = new Map();
     const compactMode = window.matchMedia("(max-width: 1099px)");
 
-    function findModButton(id) {
-        const byId = document.getElementById(id);
-        if (byId) return byId;
-
-        // Fallback pentru versiuni ale modurilor care folosesc alt ID.
+    function findModButtons(id) {
         const labels = {
             "advanced-building": "Advanced Building",
             "furniture-plus-button": "Furniture Plus",
@@ -491,56 +487,74 @@ function createInventoryPanel() {
             "electricity-button": "Electricity"
         };
         const label = labels[id];
-        return [...document.querySelectorAll("button")].find(button =>
-            button.textContent.includes(label)
-        ) || null;
+        const found = new Set();
+
+        document.querySelectorAll("#" + id).forEach(button => {
+            if (button.tagName === "BUTTON") found.add(button);
+        });
+
+        document.querySelectorAll("button").forEach(button => {
+            if (
+                !tools.contains(button) &&
+                button.textContent &&
+                button.textContent.includes(label)
+            ) {
+                found.add(button);
+            }
+        });
+
+        return [...found].filter(button =>
+            button !== tools &&
+            !button.closest("#square-inventory-overlay")
+        );
     }
 
     function collectModTools() {
         if (!tools || !tools.isConnected) return;
 
         for (const id of toolIds) {
-            const button = findModButton(id);
-            if (!button || button === tools || tools.contains(button)) {
-                if (button && compactMode.matches) styleModButton(button);
-                continue;
-            }
+            const buttons = findModButtons(id);
 
-            if (!toolOriginalStyles.has(button)) {
-                toolOriginalStyles.set(button, button.getAttribute("style"));
-            }
-
-            if (compactMode.matches) {
-                if (!toolOrigins.has(button) && button.parentNode) {
-                    const marker = document.createComment("square-mod-tool-" + id);
-                    button.parentNode.insertBefore(marker, button);
-                    toolOrigins.set(button, marker);
+            for (const button of buttons) {
+                if (!toolOriginalStyles.has(button)) {
+                    toolOriginalStyles.set(button, button.getAttribute("style"));
                 }
 
-                tools.appendChild(button);
-                styleModButton(button);
+                if (compactMode.matches) {
+                    if (!toolOrigins.has(button) && button.parentNode) {
+                        const marker = document.createComment("square-mod-tool-" + id);
+                        button.parentNode.insertBefore(marker, button);
+                        toolOrigins.set(button, marker);
+                    }
 
-                if (!button.dataset.squareCloseBound) {
-                    button.dataset.squareCloseBound = "1";
-                    button.addEventListener("click", closeInventoryPanel);
-                }
-            } else {
-                const marker = toolOrigins.get(button);
-                if (marker && marker.parentNode) {
-                    marker.parentNode.insertBefore(button, marker);
-                    marker.remove();
-                }
+                    if (button.parentNode !== tools) {
+                        tools.appendChild(button);
+                    }
 
-                const originalStyle = toolOriginalStyles.get(button);
-                if (originalStyle === null) {
-                    button.removeAttribute("style");
-                } else if (typeof originalStyle === "string") {
-                    button.setAttribute("style", originalStyle);
-                }
+                    styleModButton(button);
 
-                toolOrigins.delete(button);
-                toolOriginalStyles.delete(button);
-                delete button.dataset.squareCloseBound;
+                    if (!button.dataset.squareCloseBound) {
+                        button.dataset.squareCloseBound = "1";
+                        button.addEventListener("click", closeInventoryPanel);
+                    }
+                } else {
+                    const marker = toolOrigins.get(button);
+                    if (marker && marker.parentNode) {
+                        marker.parentNode.insertBefore(button, marker);
+                        marker.remove();
+                    }
+
+                    const originalStyle = toolOriginalStyles.get(button);
+                    if (originalStyle === null) {
+                        button.removeAttribute("style");
+                    } else if (typeof originalStyle === "string") {
+                        button.setAttribute("style", originalStyle);
+                    }
+
+                    toolOrigins.delete(button);
+                    toolOriginalStyles.delete(button);
+                    delete button.dataset.squareCloseBound;
+                }
             }
         }
     }
