@@ -1005,3 +1005,15 @@ button:disabled {
         padding: 4px 6px !important;
     }
 }
+
+/* Pe ecrane sub 1100px, butoanele originale ale modurilor
+   sunt afisate numai in fila Inventar > Moduri. Dupa mutare,
+   ele nu mai sunt copii directi ai body si devin vizibile in fila. */
+@media (max-width: 1099px) {
+    body > #advanced-building,
+    body > #furniture-plus-button,
+    body > #technology-button,
+    body > #electricity-button {
+        display: none !important;
+    }
+}
